@@ -474,7 +474,7 @@ public abstract class LivingEntity extends Entity implements EquipmentHandler {
         EntityAnimationPacket animationPacket = new EntityAnimationPacket();
         animationPacket.entityId = getEntityId();
         animationPacket.animation = EntityAnimationPacket.Animation.SWING_OFF_HAND;
-        sendPacketToViewers(animationPacket);
+        sendPacketToViewersAndSelf(animationPacket);
     }
 
     public void refreshActiveHand(boolean isHandActive, boolean offHand, boolean riptideSpinAttack) {
@@ -482,7 +482,7 @@ public abstract class LivingEntity extends Entity implements EquipmentHandler {
         this.offHand = offHand;
         this.riptideSpinAttack = riptideSpinAttack;
 
-        sendPacketToViewers(getMetadataPacket());
+        sendPacketToViewersAndSelf(getMetadataPacket());
     }
 
     /**
