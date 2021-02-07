@@ -30,7 +30,7 @@ public class BlockAlternative {
         }
         return map;
     }
-    
+
     public String getProperty(String key) {
         for (String p : properties) {
             String[] parts = p.split("=");
@@ -39,6 +39,10 @@ public class BlockAlternative {
                     return parts[1];
         }
         return null;
+    }
+
+    public boolean hasProperty(String key) {
+        return getProperty(key) != null;
     }
 
     @Override

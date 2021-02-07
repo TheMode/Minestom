@@ -250,6 +250,10 @@ public final class Arguments {
         });
     }
 
+    public boolean hasArgument(String id) {
+        return args.containsKey(id);
+    }
+
     protected void setArg(@NotNull String id, Object value) {
         this.args.put(id, value);
     }
