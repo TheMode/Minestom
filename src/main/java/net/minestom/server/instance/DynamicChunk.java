@@ -77,7 +77,6 @@ public class DynamicChunk extends Chunk {
 
     @Override
     public void UNSAFE_setBlock(int x, int y, int z, short blockStateId, short customBlockId, Data data, boolean updatable) {
-
         {
             // Update pathfinder
             if (columnarSpace != null) {
@@ -169,13 +168,13 @@ public class DynamicChunk extends Chunk {
     }
 
     @Override
-    protected void refreshBlockValue(int x, int y, int z, short blockStateId, short customBlockId) {
+    public void refreshBlockValue(int x, int y, int z, short blockStateId, short customBlockId) {
         setBlockAt(blockPalette, x, y, z, blockStateId);
         setBlockAt(customBlockPalette, x, y, z, customBlockId);
     }
 
     @Override
-    protected void refreshBlockStateId(int x, int y, int z, short blockStateId) {
+    public void refreshBlockStateId(int x, int y, int z, short blockStateId) {
         setBlockAt(blockPalette, x, y, z, blockStateId);
     }
 
