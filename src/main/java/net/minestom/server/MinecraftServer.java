@@ -42,6 +42,7 @@ import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.stat.StatisticType;
 import net.minestom.server.storage.StorageLocation;
 import net.minestom.server.storage.StorageManager;
+import net.minestom.server.tab.TabListManager;
 import net.minestom.server.timer.SchedulerManager;
 import net.minestom.server.utils.MathUtils;
 import net.minestom.server.utils.PacketUtils;
@@ -116,6 +117,7 @@ public final class MinecraftServer {
     private static DimensionTypeManager dimensionTypeManager;
     private static BiomeManager biomeManager;
     private static AdvancementManager advancementManager;
+    private static TabListManager tabListManager;
     private static BossBarManager bossBarManager;
 
     private static ExtensionManager extensionManager;
@@ -182,6 +184,7 @@ public final class MinecraftServer {
         dimensionTypeManager = new DimensionTypeManager();
         biomeManager = new BiomeManager();
         advancementManager = new AdvancementManager();
+        tabListManager = new TabListManager();
         bossBarManager = new BossBarManager();
 
         updateManager = new UpdateManager();
@@ -660,6 +663,16 @@ public final class MinecraftServer {
     public static AdvancementManager getAdvancementManager() {
         checkInitStatus(advancementManager);
         return advancementManager;
+    }
+
+    /**
+     * Gets the manager for handling TabList and TabList updates.
+     *
+     * @return the TabList manager
+     */
+    public static TabListManager getTabListManager() {
+        checkInitStatus(tabListManager);
+        return tabListManager;
     }
 
     /**

@@ -62,6 +62,7 @@ import net.minestom.server.scoreboard.Team;
 import net.minestom.server.sound.SoundCategory;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.stat.PlayerStatistic;
+import net.minestom.server.tab.TabList;
 import net.minestom.server.utils.*;
 import net.minestom.server.utils.callback.OptionalCallback;
 import net.minestom.server.utils.chunk.ChunkCallback;
@@ -99,6 +100,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     // All the entities that this player can see
     protected final Set<Entity> viewableEntities = ConcurrentHashMap.newKeySet();
 
+    private TabList tabList;
     private int latency;
     private Component displayName;
     private PlayerSkin skin;
@@ -251,7 +253,13 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         callEvent(PlayerSkinInitEvent.class, skinInitEvent);
         this.skin = skinInitEvent.getSkin();
         // FIXME: when using Geyser, this line remove the skin of the client
-        playerConnection.sendPacket(getAddPlayerToList());
+
+        // tab list
+        this.tabList = MinecraftServer.getTabListManager().getDefaultTabList();
+        this.tabList.addViewer(this);
+        this.tabList.addDisplayedPlayer(this);
+
+
 
         // Commands start
         {
@@ -563,6 +571,13 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     public void remove() {
         callEvent(PlayerDisconnectEvent.class, new PlayerDisconnectEvent(this));
 
+        this.tabList.removeViewer(this);
+        for (TabList tabList : MinecraftServer.getTabListManager().getTabLists()) {
+            if (tabList.getDisplayedPlayers().contains(this)) {
+                tabList.removeDisplayedPlayer(this);
+            }
+        }
+
         super.remove();
         this.packets.clear();
         if (getOpenInventory() != null)
@@ -606,8 +621,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         if (player == this) {
             return false;
         }
-        PlayerConnection viewerConnection = player.getPlayerConnection();
-        viewerConnection.sendPacket(getAddPlayerToList());
+        MinecraftServer.getTabListManager().handleSkinInView(this, player);
         return super.addViewer0(player);
     }
 
@@ -618,7 +632,6 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         }
 
         PlayerConnection viewerConnection = player.getPlayerConnection();
-        viewerConnection.sendPacket(getRemovePlayerToList());
 
         // Team
         if (this.getTeam() != null && this.getTeam().getMembers().size() == 1) {// If team only contains "this" player
@@ -1258,9 +1271,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     public void setDisplayName(@Nullable Component displayName) {
         this.displayName = displayName;
 
-        PlayerInfoPacket infoPacket = new PlayerInfoPacket(PlayerInfoPacket.Action.UPDATE_DISPLAY_NAME);
-        infoPacket.playerInfos.add(new PlayerInfoPacket.UpdateDisplayName(getUuid(), displayName));
-        sendPacketToViewersAndSelf(infoPacket);
+        this.getTabList().updateDisplayName(this);
     }
 
     /**
@@ -1269,8 +1280,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
      * @return the player skin object,
      * null means that the player has his {@link #getUuid()} default skin
      */
-    @Nullable
-    public PlayerSkin getSkin() {
+    public @Nullable PlayerSkin getSkin() {
         return skin;
     }
 
@@ -1291,27 +1301,22 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         DestroyEntitiesPacket destroyEntitiesPacket = new DestroyEntitiesPacket();
         destroyEntitiesPacket.entityIds = new int[]{getEntityId()};
 
-        final PlayerInfoPacket removePlayerPacket = getRemovePlayerToList();
-        final PlayerInfoPacket addPlayerPacket = getAddPlayerToList();
-
         RespawnPacket respawnPacket = new RespawnPacket();
         respawnPacket.dimensionType = getDimensionType();
         respawnPacket.gameMode = getGameMode();
         respawnPacket.isFlat = levelFlat;
 
-        playerConnection.sendPacket(removePlayerPacket);
+        for (TabList tabList : MinecraftServer.getTabListManager().getTabLists()) {
+            if (tabList.getDisplayedPlayers().contains(this)) {
+                tabList.removeDisplayedPlayer(this);
+                tabList.addDisplayedPlayer(this);
+            } else {
+                tabList.addDisplayedPlayer(this);
+                tabList.removeDisplayedPlayer(this);
+            }
+        }
         playerConnection.sendPacket(destroyEntitiesPacket);
         playerConnection.sendPacket(respawnPacket);
-        playerConnection.sendPacket(addPlayerPacket);
-
-        {
-            // Remove player
-            sendPacketToViewers(removePlayerPacket);
-            sendPacketToViewers(destroyEntitiesPacket);
-
-            // Show player again
-            getViewers().forEach(player -> showPlayer(player.getPlayerConnection()));
-        }
 
         getInventory().update();
         teleport(getPosition());
@@ -1361,6 +1366,25 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         changeGameStatePacket.reason = reason;
         changeGameStatePacket.value = value;
         playerConnection.sendPacket(changeGameStatePacket);
+    }
+
+    /**
+     * Gets the TabList the player is viewing
+     *
+     * @return the viewed {@link TabList}
+     */
+    public @NotNull TabList getTabList() {
+        return tabList;
+    }
+
+    /**
+     * Sets the TabList the player is viewing.
+     * This should not be directly called and instead you should call {@link TabList#addViewer(Player)}
+     *
+     * @param tabList
+     */
+    public void setTabList(@NotNull TabList tabList) {
+        this.tabList = tabList;
     }
 
     /**
@@ -1769,10 +1793,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         // Condition to prevent sending the packets before spawning the player
         if (isActive()) {
             sendChangeGameStatePacket(ChangeGameStatePacket.Reason.CHANGE_GAMEMODE, gameMode.getId());
-
-            PlayerInfoPacket infoPacket = new PlayerInfoPacket(PlayerInfoPacket.Action.UPDATE_GAMEMODE);
-            infoPacket.playerInfos.add(new PlayerInfoPacket.UpdateGamemode(getUuid(), gameMode));
-            sendPacketToViewersAndSelf(infoPacket);
+            MinecraftServer.getTabListManager().updateGamemode(this);
         }
     }
 
@@ -1834,6 +1855,13 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         final ConnectionState connectionState = playerConnection.getConnectionState();
 
         // Packet type depends on the current player connection state
+        this.tabList.removeViewer(this);
+        for (TabList tabList : MinecraftServer.getTabListManager().getTabLists()) {
+            if (tabList.getDisplayedPlayers().contains(this)) {
+                tabList.removeDisplayedPlayer(this);
+            }
+        }
+
         final ServerPacket disconnectPacket;
         if (connectionState == ConnectionState.LOGIN) {
             disconnectPacket = new LoginDisconnectPacket(component);
@@ -2277,9 +2305,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
      */
     public void refreshLatency(int latency) {
         this.latency = latency;
-        PlayerInfoPacket playerInfoPacket = new PlayerInfoPacket(PlayerInfoPacket.Action.UPDATE_LATENCY);
-        playerInfoPacket.playerInfos.add(new PlayerInfoPacket.UpdateLatency(getUuid(), latency));
-        sendPacketToViewersAndSelf(playerInfoPacket);
+        MinecraftServer.getTabListManager().updateLatency(this);
     }
 
     public void refreshOnGround(boolean onGround) {
@@ -2456,32 +2482,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         return HoverEvent.showEntity(ShowEntity.of(EntityType.PLAYER, this.uuid, this.displayName));
     }
 
-    /**
-     * Gets the packet to add the player from the tab-list.
-     *
-     * @return a {@link PlayerInfoPacket} to add the player
-     */
-    @NotNull
-    protected PlayerInfoPacket getAddPlayerToList() {
-        PlayerInfoPacket playerInfoPacket = new PlayerInfoPacket(PlayerInfoPacket.Action.ADD_PLAYER);
 
-        PlayerInfoPacket.AddPlayer addPlayer =
-                new PlayerInfoPacket.AddPlayer(getUuid(), getUsername(), getGameMode(), getLatency());
-        addPlayer.displayName = displayName;
-
-        // Skin support
-        if (skin != null) {
-            final String textures = skin.getTextures();
-            final String signature = skin.getSignature();
-
-            PlayerInfoPacket.AddPlayer.Property prop =
-                    new PlayerInfoPacket.AddPlayer.Property("textures", textures, signature);
-            addPlayer.properties.add(prop);
-        }
-
-        playerInfoPacket.playerInfos.add(addPlayer);
-        return playerInfoPacket;
-    }
 
     /**
      * Gets the packet to remove the player from the tab-list.
@@ -2492,8 +2493,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     protected PlayerInfoPacket getRemovePlayerToList() {
         PlayerInfoPacket playerInfoPacket = new PlayerInfoPacket(PlayerInfoPacket.Action.REMOVE_PLAYER);
 
-        PlayerInfoPacket.RemovePlayer removePlayer =
-                new PlayerInfoPacket.RemovePlayer(getUuid());
+        PlayerInfoPacket.RemovePlayer removePlayer = new PlayerInfoPacket.RemovePlayer(getUuid());
 
         playerInfoPacket.playerInfos.add(removePlayer);
         return playerInfoPacket;
@@ -2508,7 +2508,17 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
      * @param connection the connection to show the player to
      */
     protected void showPlayer(@NotNull PlayerConnection connection) {
-        connection.sendPacket(getAddPlayerToList());
+        for (TabList tabList : MinecraftServer.getTabListManager().getTabLists()) {
+            boolean isOnList = tabList.getDisplayedPlayers().contains(this);
+            if (isOnList) {
+                tabList.removeDisplayedPlayer(this); // Makes it so there arent duplicates of players
+            }
+            tabList.addDisplayedPlayer(this); // Adds on all tablists to cache skin
+            if (!isOnList) {
+                tabList.removeDisplayedPlayer(this); // Remove from tablists the player wasnt meant to be on
+            }
+        }
+
 
         connection.sendPacket(getEntityType().getSpawnType().getSpawnPacket(this));
         connection.sendPacket(getVelocityPacket());
