@@ -11,6 +11,8 @@ import net.minestom.server.instance.batch.ChunkGenerationBatch;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.CustomBlock;
 import net.minestom.server.instance.block.rule.BlockPlacementRule;
+import net.minestom.server.instance.lighting.ChunkLightEngine;
+import net.minestom.server.instance.lighting.DefaultChunkLightEngine;
 import net.minestom.server.network.packet.server.play.BlockChangePacket;
 import net.minestom.server.network.packet.server.play.EffectPacket;
 import net.minestom.server.network.packet.server.play.UnloadChunkPacket;
@@ -53,6 +55,10 @@ public class InstanceContainer extends Instance {
 
     // the chunk generator used, can be null
     private ChunkGenerator chunkGenerator;
+
+    // the chunk light engine used, can be null
+    private ChunkLightEngine chunkLightEngine;
+
     // (chunk index -> chunk) map, contains all the chunks in the instance
     private final Map<Long, Chunk> chunks = new ConcurrentHashMap<>();
     // contains all the chunks to remove during the next instance tick, should be synchronized
@@ -101,6 +107,9 @@ public class InstanceContainer extends Instance {
             final Data data = storageLocation.getOrDefault(DATA_KEY, SerializableData.class, null);
             setData(data);
         }
+
+        // Set the light engine to the default implementation
+        setChunkLightEngine(new DefaultChunkLightEngine());
     }
 
     @Override
@@ -699,6 +708,16 @@ public class InstanceContainer extends Instance {
     @Override
     public void setChunkGenerator(ChunkGenerator chunkGenerator) {
         this.chunkGenerator = chunkGenerator;
+    }
+    
+    @Override
+    public ChunkLightEngine getChunkLightEngine() {
+        return chunkLightEngine;
+    }
+
+    @Override
+    public void setChunkLightEngine(ChunkLightEngine chunkLightEngine) {
+        this.chunkLightEngine = chunkLightEngine;
     }
 
     /**
