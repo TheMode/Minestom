@@ -28,6 +28,7 @@ import net.minestom.server.thread.ThreadProvider;
 import net.minestom.server.utils.BlockPosition;
 import net.minestom.server.utils.PacketUtils;
 import net.minestom.server.utils.Position;
+import net.minestom.server.utils.async.AsyncUtils;
 import net.minestom.server.utils.chunk.ChunkCallback;
 import net.minestom.server.utils.chunk.ChunkUtils;
 import net.minestom.server.utils.entity.EntityUtils;
@@ -872,23 +873,25 @@ public abstract class Instance implements BlockModifier, Tickable, EventHandler,
                 player.getPlayerConnection().sendPacket(createTimePacket());
             }
 
-            // Send all visible entities
-            EntityUtils.forEachRange(this, entityPosition, MinecraftServer.getEntityViewDistance(), ent -> {
-                if (isPlayer) {
-                    if (ent.isAutoViewable())
-                        ent.addViewer((Player) entity);
-                }
+            AsyncUtils.runAsync(() -> {
+                // Send all visible entities
+                EntityUtils.forEachRange(this, entityPosition, MinecraftServer.getEntityViewDistance(), ent -> {
+                    if (isPlayer) {
+                        if (ent.isAutoViewable())
+                            ent.addViewer((Player) entity);
+                    }
 
-                if (ent instanceof Player) {
-                    if (entity.isAutoViewable())
-                        entity.addViewer((Player) ent);
-                }
-            });
+                    if (ent instanceof Player) {
+                        if (entity.isAutoViewable())
+                            entity.addViewer((Player) ent);
+                    }
+                });
 
-            // Load the chunk if not already (or throw an error if auto chunk load is disabled)
-            loadOptionalChunk(entityPosition, chunk -> {
-                Check.notNull(chunk, "You tried to spawn an entity in an unloaded chunk, " + entityPosition);
-                UNSAFE_addEntityToChunk(entity, chunk);
+                // Load the chunk if not already (or throw an error if auto chunk load is disabled)
+                loadOptionalChunk(entityPosition, chunk -> {
+                    Check.notNull(chunk, "You tried to spawn an entity in an unloaded chunk, " + entityPosition);
+                    UNSAFE_addEntityToChunk(entity, chunk);
+                });
             });
         });
     }
@@ -943,8 +946,8 @@ public abstract class Instance implements BlockModifier, Tickable, EventHandler,
     @ApiStatus.Internal
     public void UNSAFE_addEntityToChunk(@NotNull Entity entity, @NotNull Chunk chunk) {
         Check.notNull(chunk,
-                "The chunk " + chunk + " is not loaded, you can make it automatic by using Instance#enableAutoChunkLoad(true)");
-        Check.argCondition(!chunk.isLoaded(), "Chunk " + chunk + " has been unloaded previously");
+                "The chunk {0} is not loaded, you can make it automatic by using Instance#enableAutoChunkLoad(true)", chunk);
+        Check.argCondition(!chunk.isLoaded(), "Chunk {0} has been unloaded previously", chunk);
         final long chunkIndex = ChunkUtils.getChunkIndex(chunk.getChunkX(), chunk.getChunkZ());
         synchronized (entitiesLock) {
             Set<Entity> entities = getEntitiesInChunk(chunkIndex);

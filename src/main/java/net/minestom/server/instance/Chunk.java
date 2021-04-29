@@ -461,18 +461,10 @@ public abstract class Chunk implements Viewable, Tickable, DataContainer {
     @Override
     public boolean addViewer(@NotNull Player player) {
         final boolean result = this.viewers.add(player);
-
-        // Add to the viewable chunks set
-        player.getViewableChunks().add(this);
-
-        // Send the chunk data & light packets to the player
-        sendChunk(player);
-
         if (result) {
             PlayerChunkLoadEvent playerChunkLoadEvent = new PlayerChunkLoadEvent(player, chunkX, chunkZ);
             player.callEvent(PlayerChunkLoadEvent.class, playerChunkLoadEvent);
         }
-
         return result;
     }
 
@@ -486,15 +478,10 @@ public abstract class Chunk implements Viewable, Tickable, DataContainer {
     @Override
     public boolean removeViewer(@NotNull Player player) {
         final boolean result = this.viewers.remove(player);
-
-        // Remove from the viewable chunks set
-        player.getViewableChunks().remove(this);
-
         if (result) {
             PlayerChunkUnloadEvent playerChunkUnloadEvent = new PlayerChunkUnloadEvent(player, chunkX, chunkZ);
             player.callEvent(PlayerChunkUnloadEvent.class, playerChunkUnloadEvent);
         }
-
         return result;
     }
 

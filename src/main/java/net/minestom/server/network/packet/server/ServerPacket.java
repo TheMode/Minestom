@@ -26,4 +26,9 @@ public interface ServerPacket extends Readable, Writeable {
      */
     int getId();
 
+    @NotNull
+    default NetworkHint getNetworkHint() {
+        return NetworkHint.Preservative();
+    }
+
 }

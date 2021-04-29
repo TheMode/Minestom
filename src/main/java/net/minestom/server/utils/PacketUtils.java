@@ -4,11 +4,16 @@ import com.velocitypowered.natives.compression.VelocityCompressor;
 import com.velocitypowered.natives.util.Natives;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap;
+import it.unimi.dsi.fastutil.ints.IntIntPair;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.audience.ForwardingAudience;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.Viewable;
 import net.minestom.server.adventure.AdventureSerializer;
 import net.minestom.server.adventure.audience.PacketGroupingAudience;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.listener.manager.PacketListenerManager;
 import net.minestom.server.network.netty.packet.FramedPacket;
@@ -21,8 +26,10 @@ import net.minestom.server.utils.callback.validator.PlayerValidator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Duration;
 import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.zip.DataFormatException;
 
 /**
@@ -54,7 +61,7 @@ public final class PacketUtils {
      * </ol>
      *
      * @param audience the audience
-     * @param packet the packet
+     * @param packet   the packet
      */
     @SuppressWarnings("OverrideOnly") // we need to access the audiences inside ForwardingAudience
     public static void sendPacket(@NotNull Audience audience, @NotNull ServerPacket packet) {
@@ -69,6 +76,106 @@ public final class PacketUtils {
                 PacketUtils.sendPacket(member, packet);
             }
         }
+    }
+
+    private static volatile Map<Viewable, ViewableStorage> VIEWABLE_STORAGE_MAP = new ConcurrentHashMap<>();
+
+    private static class ViewableStorage {
+        private final Viewable viewable;
+        private final Map<Integer, Entry> entries = new ConcurrentSkipListMap<>();
+
+        private ViewableStorage(Viewable viewable) {
+            this.viewable = viewable;
+        }
+
+        private synchronized void append(int priority, PlayerConnection playerConnection, ServerPacket serverPacket) {
+            ViewableStorage.Entry entry = entries.computeIfAbsent(priority, integer -> new ViewableStorage.Entry());
+            final boolean hasConnection = playerConnection != null;
+            var entityIdMap = entry.entityIdMap;
+            if (hasConnection && entityIdMap.containsKey(playerConnection))
+                return;
+
+            ByteBuf buffer = entry.buffer;
+            final int start = buffer.writerIndex();
+            writeFramedPacket(buffer, serverPacket);
+            final int end = buffer.writerIndex();
+
+            if (hasConnection) {
+                entityIdMap.put(playerConnection, IntIntPair.of(start, end));
+            }
+        }
+
+        private void process() {
+            entries.forEach((integer, entry) -> {
+                var entityIdMap = entry.entityIdMap;
+                if (entityIdMap.isEmpty())
+                    return;
+
+                ByteBuf buffer = entry.buffer;
+                final int readable = buffer.readableBytes();
+
+                var viewers = viewable.getViewers();
+
+                viewers.forEach(player -> {
+                    var connection = player.getPlayerConnection();
+                    final var pair = entityIdMap.get(connection);
+                    ByteBuf result = buffer;
+                    if (pair != null) {
+                        final int start = pair.leftInt();
+                        final int end = pair.rightInt();
+
+                        if (start == 0) {
+                            result = buffer.retainedSlice(end, readable - end);
+                        } else if (end == readable) {
+                            result = buffer.retainedSlice(0, start);
+                        } else {
+                            final var slice1 = buffer.retainedSlice(0, start);
+                            final var slice2 = buffer.retainedSlice(end, readable - end);
+                            result = Unpooled.wrappedBuffer(slice1, slice2);
+                        }
+                    }
+                    if (connection instanceof NettyPlayerConnection) {
+                        var nettyPlayerConnection = (NettyPlayerConnection) connection;
+                        var framedPacket = new FramedPacket(result);
+                        nettyPlayerConnection.write(framedPacket); // Sync write
+                    }
+                });
+            });
+        }
+
+        private static class Entry {
+            Map<PlayerConnection, IntIntPair> entityIdMap = new ConcurrentHashMap<>();
+            ByteBuf buffer = Unpooled.buffer();
+        }
+    }
+
+    public static void prepareGroupedPacket(@NotNull Viewable viewable, @NotNull ServerPacket serverPacket, @Nullable Entity entity) {
+        if (entity != null && !entity.isAutoViewable()) {
+            // Operation cannot be optimized
+            entity.sendPacketToViewers(serverPacket);
+            return;
+        }
+
+        final PlayerConnection playerConnection = entity instanceof Player ? ((Player) entity).getPlayerConnection() : null;
+        ViewableStorage viewableStorage = VIEWABLE_STORAGE_MAP.computeIfAbsent(viewable, c -> new ViewableStorage(viewable));
+        final int priority = serverPacket.getNetworkHint().getPriority();
+        viewableStorage.append(priority, playerConnection, serverPacket);
+    }
+
+    public static void prepareGroupedPacket(@NotNull Viewable viewable, @NotNull ServerPacket serverPacket) {
+        prepareGroupedPacket(viewable, serverPacket, null);
+    }
+
+    public static void flush() {
+        var map = VIEWABLE_STORAGE_MAP;
+        VIEWABLE_STORAGE_MAP = new ConcurrentHashMap<>();
+        map.values().parallelStream().forEach(viewableStorage -> {
+            if (viewableStorage.entries.isEmpty()) {
+                return; // nothing to flush
+            }
+
+            viewableStorage.process();
+        });
     }
 
     /**

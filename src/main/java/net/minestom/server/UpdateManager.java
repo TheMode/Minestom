@@ -10,6 +10,7 @@ import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.player.NettyPlayerConnection;
 import net.minestom.server.thread.SingleThreadProvider;
 import net.minestom.server.thread.ThreadProvider;
+import net.minestom.server.utils.PacketUtils;
 import net.minestom.server.utils.async.AsyncUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -89,10 +90,16 @@ public final class UpdateManager {
                 }
 
                 // Flush all waiting packets
-                AsyncUtils.runAsync(() -> connectionManager.getOnlinePlayers().parallelStream()
-                        .filter(player -> player.getPlayerConnection() instanceof NettyPlayerConnection)
-                        .map(player -> (NettyPlayerConnection) player.getPlayerConnection())
-                        .forEach(NettyPlayerConnection::flush));
+                AsyncUtils.runAsync(() -> {
+                    // Flush viewable packets
+                    PacketUtils.flush();
+
+                    // Flush sockets
+                    connectionManager.getOnlinePlayers().parallelStream()
+                            .filter(player -> player.getPlayerConnection() instanceof NettyPlayerConnection)
+                            .map(player -> (NettyPlayerConnection) player.getPlayerConnection())
+                            .forEach(NettyPlayerConnection::flush);
+                });
 
             } catch (Exception e) {
                 MinecraftServer.getExceptionManager().handleException(e);

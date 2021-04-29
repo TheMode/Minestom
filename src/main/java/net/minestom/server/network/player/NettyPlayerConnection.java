@@ -63,6 +63,7 @@ public class NettyPlayerConnection extends PlayerConnection {
 
     private final Object tickBufferLock = new Object();
     private volatile ByteBuf tickBuffer = BufUtils.getBuffer(true);
+    private volatile boolean writable = true;
 
     public NettyPlayerConnection(@NotNull SocketChannel channel) {
         super();
@@ -214,7 +215,7 @@ public class NettyPlayerConnection extends PlayerConnection {
 
     public void flush() {
         final int bufferSize = tickBuffer.writerIndex();
-        if (bufferSize > 0) {
+        if (bufferSize > 0 && isWritable()) {
             if (channel.isActive()) {
                 writeWaitingPackets();
                 channel.flush();
@@ -381,6 +382,14 @@ public class NettyPlayerConnection extends PlayerConnection {
         synchronized (tickBufferLock) {
             tickBuffer.release();
         }
+    }
+
+    public boolean isWritable() {
+        return writable;
+    }
+
+    public void setWritable(boolean writable) {
+        this.writable = writable;
     }
 
     public byte[] getNonce() {
