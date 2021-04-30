@@ -54,6 +54,7 @@ import net.minestom.server.network.packet.server.login.LoginDisconnectPacket;
 import net.minestom.server.network.packet.server.play.*;
 import net.minestom.server.network.player.NettyPlayerConnection;
 import net.minestom.server.network.player.PlayerConnection;
+import net.minestom.server.particle.data.Particle;
 import net.minestom.server.recipe.Recipe;
 import net.minestom.server.recipe.RecipeManager;
 import net.minestom.server.resourcepack.ResourcePack;
@@ -63,6 +64,7 @@ import net.minestom.server.sound.SoundCategory;
 import net.minestom.server.sound.SoundEvent;
 import net.minestom.server.stat.PlayerStatistic;
 import net.minestom.server.utils.*;
+import net.minestom.server.utils.binary.BinaryWriter;
 import net.minestom.server.utils.callback.OptionalCallback;
 import net.minestom.server.utils.chunk.ChunkCallback;
 import net.minestom.server.utils.chunk.ChunkUtils;
@@ -945,6 +947,47 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         StopSoundPacket stopSoundPacket = new StopSoundPacket();
         stopSoundPacket.flags = 0x00;
         playerConnection.sendPacket(stopSoundPacket);
+    }
+
+    /**
+     * Sends the given particle to this player.
+     *
+     * @param particle the particle to send
+     * @param x        x position of the particle
+     * @param y        y position of the particle
+     * @param z        z position of the particle
+     */
+    public void sendParticle(@NotNull Particle particle, double x, double y, double z) {
+        ParticlePacket particlePacket = new ParticlePacket();
+        particlePacket.particleId = particle.getType().getNumericalId();
+        particlePacket.longDistance = particle.isLongDistance();
+
+        particlePacket.x = x;
+        particlePacket.y = y;
+        particlePacket.z = z;
+
+        particlePacket.offsetX = particle.getOffsetX();
+        particlePacket.offsetY = particle.getOffsetY();
+        particlePacket.offsetZ = particle.getOffsetZ();
+
+        particlePacket.speed = particle.getSpeed();
+        particlePacket.particleCount = particle.getCount();
+
+        BinaryWriter writer = new BinaryWriter();
+        particle.write(writer);
+        particlePacket.data = writer.toByteArray();
+
+        playerConnection.sendPacket(particlePacket);
+    }
+
+    /**
+     * Sends the given particle to this player.
+     *
+     * @param particle the particle to send
+     * @param position position of the particle
+     */
+    public void sendParticle(@NotNull Particle particle, Position position) {
+        sendParticle(particle, position.getX(), position.getY(), position.getZ());
     }
 
     /**

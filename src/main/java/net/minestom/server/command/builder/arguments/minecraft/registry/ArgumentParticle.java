@@ -2,22 +2,34 @@ package net.minestom.server.command.builder.arguments.minecraft.registry;
 
 import net.minestom.server.command.builder.NodeMaker;
 import net.minestom.server.network.packet.server.play.DeclareCommandsPacket;
-import net.minestom.server.particle.Particle;
+import net.minestom.server.particle.ParticleType;
+import net.minestom.server.particle.data.Particle;
 import net.minestom.server.registry.Registry;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Represents an argument giving a {@link Particle}.
+ * Represents an argument giving a {@link ParticleType}.
  */
 public class ArgumentParticle extends ArgumentRegistry<Particle> {
 
     public ArgumentParticle(String id) {
-        super(id);
+        super(id, true);
     }
 
     @Override
     public Particle getRegistry(@NotNull String value) {
-        return Registry.PARTICLE_REGISTRY.get(value);
+        String[] split = value.split(StringUtils.SPACE, 2);
+
+        ParticleType<?> particleType = Registry.PARTICLE_REGISTRY.get(split[0]);
+
+        if (particleType == null) return null;
+
+        if (split.length == 1) {
+            return particleType.readData(null);
+        } else {
+            return particleType.readData(split[1]);
+        }
     }
 
     @Override
@@ -30,6 +42,6 @@ public class ArgumentParticle extends ArgumentRegistry<Particle> {
 
     @Override
     public String toString() {
-        return String.format("Particle<%s>", getId());
+        return String.format("ParticleType<%s>", getId());
     }
 }
