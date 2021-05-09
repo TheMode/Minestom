@@ -26,7 +26,7 @@ import net.minestom.server.item.Material;
 import net.minestom.server.listener.manager.PacketListenerManager;
 import net.minestom.server.monitoring.BenchmarkManager;
 import net.minestom.server.network.ConnectionManager;
-import net.minestom.server.network.PacketProcessor;
+import net.minestom.server.network.ServerSidePacketProcessor;
 import net.minestom.server.network.netty.NettyServer;
 import net.minestom.server.network.packet.server.play.PluginMessagePacket;
 import net.minestom.server.network.packet.server.play.ServerDifficultyPacket;
@@ -99,7 +99,7 @@ public final class MinecraftServer {
     private static int maxPacketSize = 30_000;
     // Network
     private static PacketListenerManager packetListenerManager;
-    private static PacketProcessor packetProcessor;
+    private static ServerSidePacketProcessor packetProcessor;
     private static NettyServer nettyServer;
     private static int nettyThreadCount = Runtime.getRuntime().availableProcessors();
     private static boolean processNettyErrors = true;
@@ -171,7 +171,7 @@ public final class MinecraftServer {
 
         connectionManager = new ConnectionManager();
         // Networking
-        packetProcessor = new PacketProcessor();
+        packetProcessor = new ServerSidePacketProcessor();
         packetListenerManager = new PacketListenerManager();
 
         instanceManager = new InstanceManager();
@@ -451,7 +451,7 @@ public final class MinecraftServer {
      *
      * @return the packet processor
      */
-    public static PacketProcessor getPacketProcessor() {
+    public static ServerSidePacketProcessor getPacketProcessor() {
         checkInitStatus(packetProcessor);
         return packetProcessor;
     }
@@ -818,6 +818,10 @@ public final class MinecraftServer {
         MinestomTerminal.stop();
         MinestomThread.shutdownAll();
         LOGGER.info("Minestom server stopped successfully.");
+        started = false;
+        initialized = false;
+        minecraftServer = null;
+        stopping = false;
     }
 
     private static void checkInitStatus(@Nullable Object object) {

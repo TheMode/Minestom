@@ -9,6 +9,12 @@ public class ClientTeleportConfirmPacket extends ClientPlayPacket {
 
     public int teleportId;
 
+    public ClientTeleportConfirmPacket() {}
+
+    public ClientTeleportConfirmPacket(int teleportId) {
+        this.teleportId = teleportId;
+    }
+
     @Override
     public void read(@NotNull BinaryReader reader) {
         this.teleportId = reader.readVarInt();
@@ -17,5 +23,10 @@ public class ClientTeleportConfirmPacket extends ClientPlayPacket {
     @Override
     public void write(@NotNull BinaryWriter writer) {
         writer.writeVarInt(teleportId);
+    }
+
+    @Override
+    public int getId() {
+        return 0x00;
     }
 }

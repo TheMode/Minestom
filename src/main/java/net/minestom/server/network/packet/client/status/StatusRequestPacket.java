@@ -33,4 +33,9 @@ public class StatusRequestPacket implements ClientPreplayPacket {
     public void write(@NotNull BinaryWriter writer) {
         // Empty
     }
+
+    @Override
+    public int getId() {
+        return 0x00;
+    }
 }
