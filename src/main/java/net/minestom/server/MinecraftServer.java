@@ -2,17 +2,20 @@ package net.minestom.server;
 
 import net.minestom.server.advancements.AdvancementManager;
 import net.minestom.server.adventure.bossbar.BossBarManager;
+import net.minestom.server.attribute.Attribute;
 import net.minestom.server.command.CommandManager;
 import net.minestom.server.data.DataManager;
 import net.minestom.server.data.DataType;
 import net.minestom.server.data.SerializableData;
 import net.minestom.server.entity.EntityType;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.metadata.villager.VillagerProfession;
+import net.minestom.server.entity.metadata.villager.VillagerType;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.exception.ExceptionManager;
 import net.minestom.server.extensions.Extension;
 import net.minestom.server.extensions.ExtensionManager;
-import net.minestom.server.fluids.Fluid;
+import net.minestom.server.fluid.Fluid;
 import net.minestom.server.gamedata.loottables.LootTableManager;
 import net.minestom.server.gamedata.tags.TagManager;
 import net.minestom.server.instance.Chunk;
@@ -36,10 +39,10 @@ import net.minestom.server.ping.ResponseDataConsumer;
 import net.minestom.server.potion.PotionEffect;
 import net.minestom.server.potion.PotionType;
 import net.minestom.server.recipe.RecipeManager;
-import net.minestom.server.registry.ResourceGatherer;
+import net.minestom.server.registry.Registry;
 import net.minestom.server.scoreboard.TeamManager;
 import net.minestom.server.sound.SoundEvent;
-import net.minestom.server.stat.StatisticType;
+import net.minestom.server.statistic.StatisticType;
 import net.minestom.server.storage.StorageLocation;
 import net.minestom.server.storage.StorageManager;
 import net.minestom.server.terminal.MinestomTerminal;
@@ -56,8 +59,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 /**
  * The main server class used to start the server and retrieve all the managers.
  * <p>
@@ -69,6 +70,8 @@ public final class MinecraftServer {
     public final static Logger LOGGER = LoggerFactory.getLogger(MinecraftServer.class);
 
     public static final String VERSION_NAME = "1.16.5";
+    public static final String VERSION_NAME_UNDERSCORED = VERSION_NAME.replace('.', '_');
+
     public static final int PROTOCOL_VERSION = 754;
 
     // Threads
@@ -157,16 +160,29 @@ public final class MinecraftServer {
         // without this line, registry types that are not loaded explicitly will have an internal empty registry in Registries
         // That can happen with PotionType for instance, if no code tries to access a PotionType field
         // TODO: automate (probably with code generation)
-        Block.values();
-        Material.values();
-        PotionType.values();
-        PotionEffect.values();
-        Enchantment.values();
-        EntityType.values();
-        SoundEvent.values();
-        Particle.values();
-        StatisticType.values();
-        Fluid.values();
+        // Load Registry
+        try {
+            Class.forName(Registry.class.getName(), true, MinecraftServer.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            LOGGER.error("An error happened while loading the registry. Minestom will attempt to load anyway, but things may not work, and crashes can happen.", e);
+        }
+        try {
+            Class.forName(Block.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(Fluid.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(EntityType.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(VillagerProfession.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(VillagerType.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(Material.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(Enchantment.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(PotionType.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(PotionEffect.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(SoundEvent.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(Particle.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(Attribute.class.getName(), true, MinecraftServer.class.getClassLoader());
+            Class.forName(StatisticType.class.getName(), true, MinecraftServer.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            LOGGER.error("An error occured while loading the keyed registry types. Minestom will attempt to load anyway, but things may not work, and crashes can happen.", e);
+        }
 
         connectionManager = new ConnectionManager();
         // Networking
@@ -194,12 +210,6 @@ public final class MinecraftServer {
 
         nettyServer = new NettyServer(packetProcessor);
 
-        // Registry
-        try {
-            ResourceGatherer.ensureResourcesArePresent(VERSION_NAME);
-        } catch (IOException e) {
-            LOGGER.error("An error happened during resource gathering. Minestom will attempt to load anyway, but things may not work, and crashes can happen.", e);
-        }
 
         initialized = true;
 

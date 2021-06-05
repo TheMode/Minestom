@@ -65,8 +65,8 @@ public final class EntityUtils {
             final short blockStateId = chunk.getBlockStateId(blockPosition.getX(),
                     blockPosition.getY(),
                     blockPosition.getZ());
-            final Block block = Block.fromStateId(blockStateId);
-            return block.isSolid();
+            final Block block = Block.REGISTRY.fromStateId(blockStateId);
+            return block.getData().isSolid();
         } catch (NullPointerException e) {
             // Probably an entity at the border of an unloaded chunk
             return false;

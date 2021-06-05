@@ -1,5 +1,7 @@
 package loottables;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.data.Data;
 import net.minestom.server.data.DataImpl;
@@ -11,13 +13,11 @@ import net.minestom.server.gamedata.loottables.entries.ItemType;
 import net.minestom.server.gamedata.loottables.tabletypes.BlockType;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.registry.ResourceGatherer;
 import net.minestom.server.utils.NamespaceID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
@@ -28,9 +28,10 @@ public class TestLootTables {
 
     @BeforeEach
     public void init() {
+        // Init material correctly.
         try {
-            ResourceGatherer.ensureResourcesArePresent(MinecraftServer.VERSION_NAME);
-        } catch (IOException e) {
+            Class.forName(Material.class.getName(), true, MinecraftServer.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
 
@@ -62,7 +63,7 @@ public class TestLootTables {
                 "    }\n" +
                 "  ]\n" +
                 "}";
-        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"), new StringReader(lootTableJson));
+        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"), (a) -> new Gson().fromJson(new StringReader(lootTableJson), JsonObject.class));
         Assertions.assertTrue(lootTable.getType() instanceof BlockType);
         Assertions.assertEquals(1, lootTable.getPools().size());
         Assertions.assertEquals(1, lootTable.getPools().get(0).getMinRollCount());
@@ -78,8 +79,8 @@ public class TestLootTables {
     }
 
     @Test
-    public void loadFromFile() throws FileNotFoundException {
-        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"));
+    public void loadFromFile() throws IOException {
+        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"), (a) -> null);
         Assertions.assertTrue(lootTable.getType() instanceof BlockType);
         Assertions.assertEquals(1, lootTable.getPools().size());
         Assertions.assertEquals(1, lootTable.getPools().get(0).getMinRollCount());
@@ -95,15 +96,15 @@ public class TestLootTables {
     }
 
     @Test
-    public void caching() throws FileNotFoundException {
-        LootTable lootTable1 = tableManager.load(NamespaceID.from("blocks/acacia_button"));
-        LootTable lootTable2 = tableManager.load(NamespaceID.from("blocks/acacia_button"));
+    public void caching() throws IOException {
+        LootTable lootTable1 = tableManager.load(NamespaceID.from("blocks/acacia_button"), (a) -> null);
+        LootTable lootTable2 = tableManager.load(NamespaceID.from("blocks/acacia_button"), (a) -> null);
         Assertions.assertSame(lootTable1, lootTable2);
     }
 
     @Test
-    public void simpleGenerate() throws FileNotFoundException {
-        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"));
+    public void simpleGenerate() throws IOException {
+        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"), (a) -> null);
         Data arguments = new DataImpl();
         List<ItemStack> stacks = lootTable.generate(arguments);
         Assertions.assertEquals(1, stacks.size());
@@ -111,8 +112,8 @@ public class TestLootTables {
     }
 
     @Test
-    public void testExplosion() throws FileNotFoundException {
-        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"));
+    public void testExplosion() throws IOException {
+        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/acacia_button"), (a) -> null);
         Data arguments = new DataImpl();
         // negative value will force the condition to fail
         arguments.set("explosionPower", -1.0, Double.class);
@@ -142,7 +143,7 @@ public class TestLootTables {
                 "    }\n" +
                 "  ]\n" +
                 "}";
-        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/none"), new StringReader(lootTableJson));
+        LootTable lootTable = tableManager.load(NamespaceID.from("blocks/none"), (a) -> new Gson().fromJson(new StringReader(lootTableJson), JsonObject.class));
         List<ItemStack> stacks = lootTable.generate(Data.EMPTY);
         Assertions.assertEquals(0, stacks.size());
     }

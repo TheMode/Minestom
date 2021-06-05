@@ -56,8 +56,7 @@ public class PlayerDiggingListener {
             }
 
             final boolean instantBreak = player.isCreative() ||
-                    player.isInstantBreak() ||
-                    Block.fromStateId(blockStateId).breaksInstantaneously();
+                    player.isInstantBreak() || Block.REGISTRY.fromStateId(blockStateId).breaksInstantaneously();
 
             if (instantBreak) {
                 // No need to check custom block
@@ -188,7 +187,7 @@ public class PlayerDiggingListener {
                 status, result);
 
         if (!result) {
-            final boolean solid = Block.fromStateId((short) blockStateId).isSolid();
+            final boolean solid = Block.REGISTRY.fromStateId((short) blockStateId).getData().isSolid();
             if (solid) {
                 final BlockPosition playerBlockPosition = player.getPosition().toBlockPosition();
 
@@ -210,7 +209,7 @@ public class PlayerDiggingListener {
     }
 
     /**
-     * Adds the effect {@link PotionEffect#MINING_FATIGUE} to the player.
+     * Adds the effect {@link PotionEffect#DIG_SLOWDOWN} to the player.
      * <p>
      * Used for {@link CustomBlock} break delay or when the {@link PlayerStartDiggingEvent} is cancelled
      * to remove the player break animation.
@@ -223,7 +222,7 @@ public class PlayerDiggingListener {
         EntityEffectPacket entityEffectPacket = new EntityEffectPacket();
         entityEffectPacket.entityId = player.getEntityId();
         entityEffectPacket.potion = new Potion(
-                PotionEffect.MINING_FATIGUE,
+                PotionEffect.DIG_SLOWDOWN,
                 (byte) -1,
                 0,
                 false,
@@ -246,7 +245,7 @@ public class PlayerDiggingListener {
 
             RemoveEntityEffectPacket removeEntityEffectPacket = new RemoveEntityEffectPacket();
             removeEntityEffectPacket.entityId = player.getEntityId();
-            removeEntityEffectPacket.effect = PotionEffect.MINING_FATIGUE;
+            removeEntityEffectPacket.effect = PotionEffect.DIG_SLOWDOWN;
             player.getPlayerConnection().sendPacket(removeEntityEffectPacket);
         }
     }

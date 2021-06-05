@@ -11,10 +11,7 @@ import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerUseItemOnBlockEvent;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
-import net.minestom.server.instance.block.Block;
-import net.minestom.server.instance.block.BlockFace;
-import net.minestom.server.instance.block.BlockManager;
-import net.minestom.server.instance.block.CustomBlock;
+import net.minestom.server.instance.block.*;
 import net.minestom.server.instance.block.rule.BlockPlacementRule;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
@@ -105,7 +102,7 @@ public class BlockPlacementListener {
                 //after rapid invalid block placements
                 BlockChangePacket blockChangePacket = new BlockChangePacket();
                 blockChangePacket.blockPosition = blockPosition;
-                blockChangePacket.blockStateId = Block.AIR.getBlockId();
+                blockChangePacket.blockStateId = Blocks.AIR.getStateId();
                 player.getPlayerConnection().sendPacket(blockChangePacket);
             }
             return;
@@ -126,7 +123,7 @@ public class BlockPlacementListener {
                 final Set<Entity> entities = instance.getChunkEntities(chunk);
                 // Check if the player is trying to place a block in an entity
                 boolean intersect = player.getBoundingBox().intersect(blockPosition);
-                if (!intersect && block.isSolid()) {
+                if (!intersect && block.getData().isSolid()) {
                     // TODO push entities too close to the position
                     for (Entity entity : entities) {
                         // 'player' has already been checked
@@ -150,14 +147,13 @@ public class BlockPlacementListener {
                     if (!playerBlockPlaceEvent.isCancelled()) {
 
                         // BlockPlacementRule check
-                        short blockStateId = playerBlockPlaceEvent.getBlockStateId();
-                        final Block resultBlock = Block.fromStateId(blockStateId);
-                        final BlockPlacementRule blockPlacementRule = BLOCK_MANAGER.getBlockPlacementRule(resultBlock);
+                        Block blockResult = playerBlockPlaceEvent.getBlock();
+                        final BlockPlacementRule blockPlacementRule = BLOCK_MANAGER.getBlockPlacementRule(blockResult);
                         if (blockPlacementRule != null) {
                             // Get id from block placement rule instead of the event
-                            blockStateId = blockPlacementRule.blockPlace(instance, resultBlock, blockFace, blockPosition, player);
+                            blockResult = blockPlacementRule.blockPlace(instance, blockResult, blockFace, blockPosition, player);
                         }
-                        final boolean placementRuleCheck = blockStateId != BlockPlacementRule.CANCEL_CODE;
+                        final boolean placementRuleCheck = blockResult != null;
 
                         if (placementRuleCheck) {
 
@@ -165,7 +161,7 @@ public class BlockPlacementListener {
                             final short customBlockId = playerBlockPlaceEvent.getCustomBlockId();
                             final Data blockData = playerBlockPlaceEvent.getBlockData(); // Possibly null
                             instance.setSeparateBlocks(blockPosition.getX(), blockPosition.getY(), blockPosition.getZ(),
-                                    blockStateId, customBlockId, blockData);
+                                    blockResult, customBlockId, blockData);
 
                             // Block consuming
                             if (playerBlockPlaceEvent.doesConsumeBlock()) {

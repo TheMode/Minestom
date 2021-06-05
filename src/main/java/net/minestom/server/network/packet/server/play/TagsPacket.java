@@ -1,14 +1,11 @@
 package net.minestom.server.network.packet.server.play;
 
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.entity.EntityType;
-import net.minestom.server.fluids.Fluid;
 import net.minestom.server.gamedata.tags.Tag;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.item.Material;
 import net.minestom.server.network.packet.server.ServerPacket;
 import net.minestom.server.network.packet.server.ServerPacketIdentifier;
-import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.Registry;
 import net.minestom.server.utils.NamespaceID;
 import net.minestom.server.utils.binary.BinaryReader;
 import net.minestom.server.utils.binary.BinaryWriter;
@@ -36,22 +33,23 @@ public class TagsPacket implements ServerPacket {
     /**
      * Default constructor, required for reflection operations.
      */
-    public TagsPacket() {}
+    public TagsPacket() {
+    }
 
     @Override
     public void write(@NotNull BinaryWriter writer) {
-        writeTags(writer, blockTags, name -> Registries.getBlock(name).ordinal());
-        writeTags(writer, itemTags, name -> Registries.getMaterial(name).ordinal());
-        writeTags(writer, fluidTags, name -> Registries.getFluid(name).ordinal());
-        writeTags(writer, entityTags, name -> Registries.getEntityType(name).ordinal());
+        writeTags(writer, blockTags, name -> Block.REGISTRY.fromNamespaceId(name).getBlockId());
+        writeTags(writer, itemTags, name -> Registry.MATERIAL_REGISTRY.get(name).getNumericalId());
+        writeTags(writer, fluidTags, name -> Registry.FLUID_REGISTRY.get(name).getNumericalId());
+        writeTags(writer, entityTags, name -> Registry.ENTITY_TYPE_REGISTRY.get(name).getNumericalId()); // Not defaulted therefore nullable.
     }
 
     @Override
     public void read(@NotNull BinaryReader reader) {
-        readTags(reader, blockTags, id -> NamespaceID.from("minecraft", Block.values()[id].getName()));
-        readTags(reader, itemTags, id -> NamespaceID.from("minecraft", Material.values()[id].getName()));
-        readTags(reader, fluidTags, id -> NamespaceID.from(Fluid.values()[id].getNamespaceID()));
-        readTags(reader, entityTags, id -> NamespaceID.from(EntityType.values()[id].getNamespaceID()));
+        readTags(reader, blockTags, id -> Block.REGISTRY.fromStateId(id.shortValue()).getNamespaceId());
+        readTags(reader, itemTags, id -> Registry.MATERIAL_REGISTRY.get(id.shortValue()).getId());
+        readTags(reader, fluidTags, id -> Registry.FLUID_REGISTRY.get(id.shortValue()).getId());
+        readTags(reader, entityTags, id -> Registry.ENTITY_TYPE_REGISTRY.get(id.shortValue()).getId()); // Not defaulted therefore nullable.
     }
 
     private void writeTags(BinaryWriter writer, List<Tag> tags, Function<NamespaceID, Integer> idSupplier) {

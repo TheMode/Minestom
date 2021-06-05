@@ -162,11 +162,11 @@ public class CollisionUtils {
             }
 
             final short blockStateId = chunk.getBlockStateId(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-            final Block block = Block.fromStateId(blockStateId);
+            final Block blockState = Block.REGISTRY.fromStateId(blockStateId);
 
-            // TODO: block collision boxes
-            // TODO: for the moment, always consider a full block
-            if (block.isSolid()) {
+            // TODO: blockState collision boxes
+            // TODO: for the moment, always consider a full blockState
+            if (blockState.getData().isSolid()) {
                 corner.subtract(axis.getX() * amount, axis.getY() * amount, axis.getZ() * amount);
 
                 if (Math.abs(axis.getX()) > 10e-16) {

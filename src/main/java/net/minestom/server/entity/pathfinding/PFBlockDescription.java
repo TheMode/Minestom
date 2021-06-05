@@ -4,6 +4,11 @@ import com.extollit.gaming.ai.path.model.IBlockDescription;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.block.Blocks;
+
+import java.util.List;
+
+import static net.minestom.server.instance.block.Blocks.*;
 
 public class PFBlockDescription implements IBlockDescription {
 
@@ -20,7 +25,7 @@ public class PFBlockDescription implements IBlockDescription {
     public static PFBlockDescription getBlockDescription(short blockStateId) {
         if (!BLOCK_DESCRIPTION_MAP.containsKey(blockStateId)) {
             synchronized (BLOCK_DESCRIPTION_MAP) {
-                final Block block = Block.fromStateId(blockStateId);
+                final Block block = Block.REGISTRY.fromStateId(blockStateId);
                 final PFBlockDescription blockDescription = new PFBlockDescription(block);
                 BLOCK_DESCRIPTION_MAP.put(blockStateId, blockDescription);
                 return blockDescription;
@@ -39,28 +44,28 @@ public class PFBlockDescription implements IBlockDescription {
     @Override
     public boolean isFenceLike() {
         // Return fences, fencegates and walls.
-        return block.name().toUpperCase().contains("FENCE") || block.name().toUpperCase().endsWith("WALL");
+        return block.getName().toUpperCase().contains("FENCE") || block.getName().toUpperCase().endsWith("WALL");
     }
 
     @Override
     public boolean isClimbable() {
         // Return ladders and vines (including weeping and twisting vines)
-        return block == Block.LADDER || block.name().toUpperCase().contains("VINE");
+        return block == LADDER || block.getName().toUpperCase().contains("VINE");
     }
 
     @Override
     public boolean isDoor() {
         // Return wooden doors, trapdoors and wooden fence gates.
-        if (block == Block.IRON_DOOR || block == Block.IRON_TRAPDOOR) {
+        if (block == IRON_DOOR || block == IRON_TRAPDOOR) {
             return false;
         } else {
-            return (block.name().toUpperCase().endsWith("DOOR") || block.name().toUpperCase().endsWith("FENCE_GATE"));
+            return (block.getName().toUpperCase().endsWith("DOOR") || block.getName().toUpperCase().endsWith("FENCE_GATE"));
         }
     }
 
     @Override
     public boolean isImpeding() {
-        return block.isSolid();
+        return block.getData().isSolid();
     }
 
     @Override
@@ -76,83 +81,48 @@ public class PFBlockDescription implements IBlockDescription {
             return false;
         }
         // All doors/trapdoors.
-        if (block.name().toUpperCase().endsWith("DOOR")) {
+        if (block.getName().toUpperCase().endsWith("DOOR")) {
             return false;
         }
-        if (block.name().toUpperCase().startsWith("POTTED")) {
+        if (block.getName().toUpperCase().startsWith("POTTED")) {
             return false;
         }
         // Skulls & Heads
-        if (block.name().toUpperCase().contains("SKULL") || block.name().toUpperCase().contains("HEAD")) {
+        if (block.getName().toUpperCase().contains("SKULL") || block.getName().toUpperCase().contains("HEAD")) {
             return false;
         }
         // Carpets
-        if (block.name().toUpperCase().endsWith("CARPET")) {
+        if (block.getName().toUpperCase().endsWith("CARPET")) {
             return false;
         }
         // Slabs
-        if (block.name().toUpperCase().contains("SLAB")) {
+        if (block.getName().toUpperCase().contains("SLAB")) {
             return false;
         }
         // Beds
-        if (block.name().toUpperCase().endsWith("BED")) {
+        if (block.getName().toUpperCase().endsWith("BED")) {
             return false;
         }
         // Glass Panes
-        if (block.name().toUpperCase().endsWith("PANE")) {
+        if (block.getName().toUpperCase().endsWith("PANE")) {
             return false;
         }
 
-        switch (block) {
-            case CHORUS_FLOWER:
-            case CHORUS_PLANT:
-            case BAMBOO:
-            case BAMBOO_SAPLING:
-            case SEA_PICKLE:
-            case TURTLE_EGG:
-            case SNOW:
-            case FLOWER_POT:
-            case LILY_PAD:
-            case ANVIL:
-            case CHIPPED_ANVIL:
-            case DAMAGED_ANVIL:
-            case CAKE:
-            case CACTUS:
-            case BREWING_STAND:
-            case LECTERN:
-            case DAYLIGHT_DETECTOR:
-            case CAMPFIRE:
-            case SOUL_CAMPFIRE:
-            case ENCHANTING_TABLE:
-            case CHEST:
-            case ENDER_CHEST:
-            case GRINDSTONE:
-            case TRAPPED_CHEST:
-            case SOUL_SAND:
-            case SOUL_SOIL:
-            case LANTERN:
-            case COCOA:
-            case CONDUIT:
-            case GRASS_PATH:
-            case FARMLAND:
-            case END_ROD:
-            case STONECUTTER:
-            case BELL: {
-                return false;
-            }
-            default: {
-                return true;
-            }
-        }
+        return !List.of(
+                CHORUS_FLOWER, CHORUS_PLANT, BAMBOO, BAMBOO_SAPLING, SEA_PICKLE, TURTLE_EGG, SNOW, FLOWER_POT,
+                LILY_PAD, ANVIL, CHIPPED_ANVIL, DAMAGED_ANVIL, CAKE, CACTUS, BREWING_STAND, LECTERN, DAYLIGHT_DETECTOR,
+                CAMPFIRE, SOUL_CAMPFIRE, ENCHANTING_TABLE, CHEST, ENDER_CHEST, GRINDSTONE, TRAPPED_CHEST, SOUL_SAND,
+                SOUL_SOIL, LANTERN, COCOA, CONDUIT, GRASS_PATH, FARMLAND, END_ROD, STONECUTTER, BELL
+        ).contains(block);
     }
 
     @Override
     public boolean isLiquid() {
-        return block.isLiquid();
+        return block.getData().isLiquid();
     }
 
     @Override
     public boolean isIncinerating() {
-        return block == Block.LAVA || block == Block.FIRE || block == Block.SOUL_FIRE;
+        return block == Blocks.LAVA || block == Blocks.FIRE || block == Blocks.SOUL_FIRE;
     }
 }

@@ -520,7 +520,7 @@ public abstract class Instance implements BlockModifier, Tickable, EventHandler,
      * @param block the new visual block
      */
     public void refreshBlockId(int x, int y, int z, @NotNull Block block) {
-        refreshBlockStateId(x, y, z, block.getBlockId());
+        refreshBlockStateId(x, y, z, block.getStateId());
     }
 
     /**
@@ -532,7 +532,7 @@ public abstract class Instance implements BlockModifier, Tickable, EventHandler,
      * @param block         the new visual block
      */
     public void refreshBlockId(@NotNull BlockPosition blockPosition, @NotNull Block block) {
-        refreshBlockStateId(blockPosition, block.getBlockId());
+        refreshBlockStateId(blockPosition, block.getStateId());
     }
 
     /**
@@ -603,7 +603,7 @@ public abstract class Instance implements BlockModifier, Tickable, EventHandler,
      * @return Block at given position.
      */
     public Block getBlock(int x, int y, int z) {
-        return Block.fromStateId(getBlockStateId(x, y, z));
+        return Block.REGISTRY.fromStateId(getBlockStateId(x, y, z));
     }
 
     /**
@@ -682,7 +682,7 @@ public abstract class Instance implements BlockModifier, Tickable, EventHandler,
      */
     public void sendBlockAction(@NotNull BlockPosition blockPosition, byte actionId, byte actionParam) {
         final short blockStateId = getBlockStateId(blockPosition);
-        final Block block = Block.fromStateId(blockStateId);
+        final Block block = Block.REGISTRY.fromStateId(blockStateId);
 
         BlockActionPacket blockActionPacket = new BlockActionPacket();
         blockActionPacket.blockPosition = blockPosition;

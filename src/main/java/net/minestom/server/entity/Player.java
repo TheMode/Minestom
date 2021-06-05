@@ -202,7 +202,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         this.gameMode = GameMode.SURVIVAL;
         this.dimensionType = DimensionType.OVERWORLD; // Default dimension
         this.levelFlat = true;
-        getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.1f);
+        getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.1);
 
         // FakePlayer init its connection there
         playerConnectionInit();
@@ -762,7 +762,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     @Deprecated
     public void playSound(@NotNull SoundEvent sound, @NotNull SoundCategory soundCategory, int x, int y, int z, float volume, float pitch) {
         SoundEffectPacket soundEffectPacket = new SoundEffectPacket();
-        soundEffectPacket.soundId = sound.getId();
+        soundEffectPacket.soundId = sound.getNumericalId();
         soundEffectPacket.soundSource = soundCategory.asSource();
         soundEffectPacket.x = x;
         soundEffectPacket.y = y;
@@ -832,7 +832,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     public void playSound(@NotNull SoundEvent sound, @NotNull SoundCategory soundCategory, float volume, float pitch) {
         EntitySoundEffectPacket entitySoundEffectPacket = new EntitySoundEffectPacket();
         entitySoundEffectPacket.entityId = getEntityId();
-        entitySoundEffectPacket.soundId = sound.getId();
+        entitySoundEffectPacket.soundId = sound.getNumericalId();
         entitySoundEffectPacket.soundSource = soundCategory.asSource();
         entitySoundEffectPacket.volume = volume;
         entitySoundEffectPacket.pitch = pitch;

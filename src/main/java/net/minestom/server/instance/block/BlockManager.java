@@ -43,7 +43,7 @@ public class BlockManager {
      * @throws IllegalArgumentException if <code>blockPlacementRule</code> block id is negative
      */
     public synchronized void registerBlockPlacementRule(@NotNull BlockPlacementRule blockPlacementRule) {
-        final short id = blockPlacementRule.getBlockId();
+        final int id = blockPlacementRule.getBlock().getBlockId();
         Check.argCondition(id < 0, "Block ID must be >= 0, got: " + id);
 
         this.placementRules[id] = blockPlacementRule;
@@ -57,7 +57,7 @@ public class BlockManager {
      */
     @Nullable
     public BlockPlacementRule getBlockPlacementRule(@NotNull Block block) {
-        return this.placementRules[block.getBlockId()];
+        return this.placementRules[block.getStateId()];
     }
 
     /**
@@ -68,7 +68,7 @@ public class BlockManager {
      */
     @Nullable
     public BlockPlacementRule getBlockPlacementRule(short blockStateId) {
-        final Block block = Block.fromStateId(blockStateId); // Convert block alternative
+        final Block block = Block.REGISTRY.fromStateId(blockStateId); // Convert block alternative
         return getBlockPlacementRule(block);
     }
 

@@ -4,7 +4,8 @@ import net.minestom.server.item.ItemMeta;
 import net.minestom.server.item.ItemMetaBuilder;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.registry.Registries;
+import net.minestom.server.registry.Registry;
+import net.minestom.server.utils.NBTUtils;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.NotNull;
 import org.jglrxavpok.hephaistos.nbt.NBTCompound;
@@ -152,7 +153,7 @@ public class CrossbowMeta extends ItemMeta implements ItemMetaBuilder.Provider<S
                 for (NBTCompound projectileCompound : projectilesList) {
                     final byte count = projectileCompound.getByte("Count");
                     final String id = projectileCompound.getString("id");
-                    final Material material = Registries.getMaterial(id);
+                    final Material material = Registry.MATERIAL_REGISTRY.get(id);
 
                     final NBTCompound tagsCompound = projectileCompound.getCompound("tag");
                     ItemStack itemStack = ItemStack.fromNBT(material, tagsCompound, count);

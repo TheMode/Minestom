@@ -3,7 +3,6 @@ package net.minestom.server.entity;
 import net.kyori.adventure.sound.Sound.Source;
 import net.minestom.server.attribute.Attribute;
 import net.minestom.server.attribute.AttributeInstance;
-import net.minestom.server.attribute.Attributes;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.entity.metadata.LivingEntityMeta;
@@ -14,10 +13,14 @@ import net.minestom.server.event.item.EntityEquipEvent;
 import net.minestom.server.event.item.PickupItemEvent;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.block.Blocks;
 import net.minestom.server.inventory.EquipmentHandler;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.ConnectionState;
-import net.minestom.server.network.packet.server.play.*;
+import net.minestom.server.network.packet.server.play.CollectItemPacket;
+import net.minestom.server.network.packet.server.play.EntityAnimationPacket;
+import net.minestom.server.network.packet.server.play.EntityPropertiesPacket;
+import net.minestom.server.network.packet.server.play.SoundEffectPacket;
 import net.minestom.server.network.player.PlayerConnection;
 import net.minestom.server.scoreboard.Team;
 import net.minestom.server.sound.SoundEvent;
@@ -47,7 +50,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     // Bounding box used for items' pickup (see LivingEntity#setBoundingBox)
     protected BoundingBox expandedBoundingBox;
 
-    private final Map<String, AttributeInstance> attributeModifiers = new ConcurrentHashMap<>(Attribute.values().length);
+    private final Map<String, AttributeInstance> attributeModifiers = new ConcurrentHashMap<>(Attribute.values().size());
 
     // Abilities
     protected boolean invulnerable;
@@ -451,21 +454,21 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     }
 
     /**
-     * Gets the entity max health from {@link #getAttributeValue(Attribute)} {@link Attributes#MAX_HEALTH}.
+     * Gets the entity max health from {@link #getAttributeValue(Attribute)} {@link Attribute#MAX_HEALTH}.
      *
      * @return the entity max health
      */
     public float getMaxHealth() {
-        return getAttributeValue(Attribute.MAX_HEALTH);
+        return (float) getAttributeValue(Attribute.MAX_HEALTH);
     }
 
     /**
      * Sets the heal of the entity as its max health.
      * <p>
-     * Retrieved from {@link #getAttributeValue(Attribute)} with the attribute {@link Attributes#MAX_HEALTH}.
+     * Retrieved from {@link #getAttributeValue(Attribute)} with the attribute {@link Attribute#MAX_HEALTH}.
      */
     public void heal() {
-        setHealth(getAttributeValue(Attribute.MAX_HEALTH));
+        setHealth((float) getAttributeValue(Attribute.MAX_HEALTH));
     }
 
     /**
@@ -476,7 +479,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      */
     @NotNull
     public AttributeInstance getAttribute(@NotNull Attribute attribute) {
-        return attributeModifiers.computeIfAbsent(attribute.getKey(),
+        return attributeModifiers.computeIfAbsent(attribute.getId().getDomain(),
                 s -> new AttributeInstance(attribute, this::onAttributeChanged));
     }
 
@@ -508,8 +511,8 @@ public class LivingEntity extends Entity implements EquipmentHandler {
      * @param attribute the attribute value to get
      * @return the attribute value
      */
-    public float getAttributeValue(@NotNull Attribute attribute) {
-        AttributeInstance instance = attributeModifiers.get(attribute.getKey());
+    public double getAttributeValue(@NotNull Attribute attribute) {
+        AttributeInstance instance = attributeModifiers.get(attribute.getId().getDomain());
         return (instance != null) ? instance.getValue() : attribute.getDefaultValue();
     }
 
@@ -602,7 +605,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
     public void setFlyingWithElytra(boolean isFlying) {
         this.entityMeta.setFlyingWithElytra(isFlying);
     }
-    
+
     /**
      * Used to change the {@code isDead} internal field.
      *
@@ -632,7 +635,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         for (int i = 0; i < properties.length; ++i) {
             EntityPropertiesPacket.Property property = new EntityPropertiesPacket.Property();
 
-            final float value = instances[i].getBaseValue();
+            final double value = instances[i].getBaseValue();
 
             property.instance = instances[i];
             property.attribute = instances[i].getAttribute();
@@ -721,7 +724,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         Iterator<BlockPosition> it = new BlockIterator(this, maxDistance);
         while (it.hasNext()) {
             BlockPosition position = it.next();
-            if (Block.fromStateId(getInstance().getBlockStateId(position)) != Block.AIR) blocks.add(position);
+            if (Block.REGISTRY.fromStateId(getInstance().getBlockStateId(position)) != Blocks.AIR) blocks.add(position);
         }
         return blocks;
     }
@@ -742,8 +745,8 @@ public class LivingEntity extends Entity implements EquipmentHandler {
 
         Iterator<BlockPosition> it = new BlockIterator(start, direction.normalize(), 0D, maxDistance);
         while (it.hasNext()) {
-            Block block = Block.fromStateId(getInstance().getBlockStateId(it.next()));
-            if (!block.isAir() && !block.isLiquid()) {
+            Block block = Block.REGISTRY.fromStateId(getInstance().getBlockStateId(it.next()));
+            if (!block.getData().isAir() && !block.getData().isLiquid()) {
                 return false;
             }
         }
@@ -760,7 +763,7 @@ public class LivingEntity extends Entity implements EquipmentHandler {
         Iterator<BlockPosition> it = new BlockIterator(this, maxDistance);
         while (it.hasNext()) {
             BlockPosition position = it.next();
-            if (Block.fromStateId(getInstance().getBlockStateId(position)) != Block.AIR) return position;
+            if (Block.REGISTRY.fromStateId(getInstance().getBlockStateId(position)) != Blocks.AIR) return position;
         }
         return null;
     }
