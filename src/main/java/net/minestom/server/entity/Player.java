@@ -50,6 +50,7 @@ import net.minestom.server.message.Messenger;
 import net.minestom.server.network.ConnectionManager;
 import net.minestom.server.network.ConnectionState;
 import net.minestom.server.network.PlayerProvider;
+import net.minestom.server.network.netty.packet.FramedPacket;
 import net.minestom.server.network.packet.client.ClientPlayPacket;
 import net.minestom.server.network.packet.client.play.ClientChatMessagePacket;
 import net.minestom.server.network.packet.server.ServerPacket;
@@ -76,6 +77,11 @@ import net.minestom.server.utils.time.Cooldown;
 import net.minestom.server.utils.time.TimeUnit;
 import net.minestom.server.utils.time.UpdateOption;
 import net.minestom.server.utils.validate.Check;
+import net.minestom.server.weather.Weather;
+import net.minestom.server.weather.WeatherContainer;
+import net.minestom.server.weather.manager.ForwardingWeatherManager;
+import net.minestom.server.weather.manager.PlayerWeatherManager;
+import net.minestom.server.weather.manager.WeatherManager;
 import net.minestom.server.world.DimensionType;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -93,7 +99,7 @@ import java.util.function.UnaryOperator;
  * <p>
  * You can easily create your own implementation of this and use it with {@link ConnectionManager#setPlayerProvider(PlayerProvider)}.
  */
-public class Player extends LivingEntity implements CommandSender, Localizable, HoverEventSource<ShowEntity>, Identified, NamedAndIdentified {
+public class Player extends LivingEntity implements CommandSender, Localizable, HoverEventSource<ShowEntity>, Identified, NamedAndIdentified, WeatherContainer {
 
     private long lastKeepAlive;
     private boolean answerKeepAlive;
@@ -181,6 +187,9 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     // Adventure
     private Identity identity;
 
+    // Weather
+    private final ForwardingWeatherManager weatherManager;
+
     public Player(@NotNull UUID uuid, @NotNull String username, @NotNull PlayerConnection playerConnection) {
         super(EntityType.PLAYER, uuid);
         this.username = username;
@@ -208,6 +217,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         playerConnectionInit();
 
         this.identity = Identity.identity(uuid);
+        this.weatherManager = new PlayerWeatherManager(this);
     }
 
     /**
@@ -307,6 +317,16 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         refreshHealth(); // Heal and send health packet
         refreshAbilities(); // Send abilities packet
         getInventory().update();
+
+        // if the instance has some weather, give it to the player
+        if ((spawnInstance.hasWeather() || MinecraftServer.getGlobalWeatherManager().getWeather().getType() != Weather.Type.CLEAR)
+                && playerConnection instanceof NettyPlayerConnection) {
+            final NettyPlayerConnection nettyPlayerConnection = (NettyPlayerConnection) playerConnection;
+
+            for (FramedPacket packet : WeatherManager.createWeatherPackets(Weather.clear(), spawnInstance.getWeather())) {
+                nettyPlayerConnection.write(packet);
+            }
+        }
     }
 
     /**
@@ -420,6 +440,9 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
                 refreshEating(null);
             }
         }
+
+        // Weather
+        this.weatherManager.checkWeatherExpiration();
 
         // Tick event
         callEvent(PlayerTickEvent.class, playerTickEvent);
@@ -655,6 +678,17 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
             // Player instance changed, clear current viewable collections
             this.viewableChunks.forEach(chunk -> chunk.removeViewer(this));
             this.viewableEntities.forEach(entity -> entity.removeViewer(this));
+        }
+
+        // if the player doesn't have their own weather and the new/old instance did, we need to resync their weather
+        if (playerConnection instanceof NettyPlayerConnection) {
+            if (!hasWeather() && ((this.instance != null && this.instance.hasWeather()) || instance.hasWeather())) {
+                final NettyPlayerConnection nettyPlayerConnection = (NettyPlayerConnection) playerConnection;
+
+                for (FramedPacket weatherPacket : WeatherManager.createWeatherPackets(this.getWeather(), instance.getWeather())) {
+                    nettyPlayerConnection.write(weatherPacket, true);
+                }
+            }
         }
 
         super.setInstance(instance, spawnPosition);
@@ -2584,6 +2618,11 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     @Override
     public Player asPlayer() {
         return this;
+    }
+
+    @Override
+    public @NotNull WeatherManager getWeatherManager() {
+        return this.weatherManager;
     }
 
     /**
