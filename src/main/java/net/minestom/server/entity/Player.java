@@ -1011,7 +1011,7 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
     @Override
     public void openBook(@NotNull Book book) {
         ItemStack writtenBook = ItemStack.builder(Material.WRITTEN_BOOK)
-                .meta(WrittenBookMeta.fromAdventure(book, this))
+                .meta(WrittenBookMeta.fromAdventure(book))
                 .build();
 
         // Set book in offhand
