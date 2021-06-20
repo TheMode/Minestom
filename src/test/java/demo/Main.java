@@ -58,7 +58,6 @@ public class Main {
 
         commandManager.setUnknownCommandCallback((sender, command) -> sender.sendMessage(Component.text("Unknown command", NamedTextColor.RED)));
 
-
         StorageManager storageManager = MinecraftServer.getStorageManager();
         storageManager.defineDefaultStorageSystem(FileStorageSystem::new);
 
