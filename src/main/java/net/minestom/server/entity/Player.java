@@ -12,7 +12,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.event.HoverEvent.ShowEntity;
 import net.kyori.adventure.text.event.HoverEventSource;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.title.Title;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.advancements.AdvancementTab;
@@ -20,9 +19,6 @@ import net.minestom.server.adventure.AdventurePacketConvertor;
 import net.minestom.server.adventure.Localizable;
 import net.minestom.server.adventure.audience.Audiences;
 import net.minestom.server.attribute.Attribute;
-import net.minestom.server.chat.ChatParser;
-import net.minestom.server.chat.ColoredText;
-import net.minestom.server.chat.JsonMessage;
 import net.minestom.server.collision.BoundingBox;
 import net.minestom.server.command.CommandManager;
 import net.minestom.server.command.CommandSender;
@@ -688,39 +684,6 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         sendPluginMessage(channel, bytes);
     }
 
-    /**
-     * Sends a legacy message with the specified color char.
-     *
-     * @param text      the text with the legacy color formatting
-     * @param colorChar the color character
-     * @deprecated Use {@link #sendMessage(Component)}
-     */
-    @Deprecated
-    public void sendLegacyMessage(@NotNull String text, char colorChar) {
-        ColoredText coloredText = ColoredText.ofLegacy(text, colorChar);
-        sendJsonMessage(coloredText.toString());
-    }
-
-    /**
-     * Sends a legacy message with the default color char {@link ChatParser#COLOR_CHAR}.
-     *
-     * @param text the text with the legacy color formatting
-     * @deprecated Use {@link #sendMessage(Component)}
-     */
-    @Deprecated
-    public void sendLegacyMessage(@NotNull String text) {
-        ColoredText coloredText = ColoredText.ofLegacy(text, ChatParser.COLOR_CHAR);
-        sendJsonMessage(coloredText.toString());
-    }
-
-    /**
-     * @deprecated Use {@link #sendMessage(Component)}
-     */
-    @Deprecated
-    public void sendJsonMessage(@NotNull String json) {
-        this.sendMessage(GsonComponentSerializer.gson().deserialize(json));
-    }
-
     @Override
     public void sendMessage(@NotNull Identity source, @NotNull Component message, @NotNull MessageType type) {
         Messenger.sendMessage(this, message, ChatPosition.fromMessageType(type), source.uuid());
@@ -888,72 +851,10 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         playerConnection.sendPacket(stopSoundPacket);
     }
 
-    /**
-     * Sets the header and footer of a player which will be displayed in his tab window.
-     *
-     * @param header the header text, null to set empty
-     * @param footer the footer text, null to set empty
-     * @deprecated Use {@link #sendPlayerListHeaderAndFooter(Component, Component)}
-     */
-    @Deprecated
-    public void sendHeaderFooter(@Nullable JsonMessage header, @Nullable JsonMessage footer) {
-        this.sendPlayerListHeaderAndFooter(header == null ? Component.empty() : header.asComponent(),
-                footer == null ? Component.empty() : footer.asComponent());
-    }
-
     @Override
     public void sendPlayerListHeaderAndFooter(@NotNull Component header, @NotNull Component footer) {
         PlayerListHeaderAndFooterPacket packet = new PlayerListHeaderAndFooterPacket(header, footer);
         playerConnection.sendPacket(packet);
-    }
-
-    /**
-     * Sends a title and subtitle message.
-     *
-     * @param title    the title message
-     * @param subtitle the subtitle message
-     * @see #sendTitleTime(int, int, int) to specify the display time
-     * @deprecated Use {@link #showTitle(Title)}
-     */
-    @Deprecated
-    public void sendTitleSubtitleMessage(@NotNull JsonMessage title, @NotNull JsonMessage subtitle) {
-        this.showTitle(Title.title(title.asComponent(), subtitle.asComponent()));
-    }
-
-    /**
-     * Sends a title message.
-     *
-     * @param title the title message
-     * @see #sendTitleTime(int, int, int) to specify the display time
-     * @deprecated Use {@link #showTitle(Title)}
-     */
-    @Deprecated
-    public void sendTitleMessage(@NotNull JsonMessage title) {
-        this.showTitle(Title.title(title.asComponent(), Component.empty()));
-    }
-
-    /**
-     * Sends a subtitle message.
-     *
-     * @param subtitle the subtitle message
-     * @see #sendTitleTime(int, int, int) to specify the display time
-     * @deprecated Use {@link #showTitle(Title)}
-     */
-    @Deprecated
-    public void sendSubtitleMessage(@NotNull JsonMessage subtitle) {
-        this.showTitle(Title.title(Component.empty(), subtitle.asComponent()));
-    }
-
-    /**
-     * Sends an action bar message.
-     *
-     * @param actionBar the action bar message
-     * @see #sendTitleTime(int, int, int) to specify the display time
-     * @deprecated Use {@link #sendActionBar(Component)}
-     */
-    @Deprecated
-    public void sendActionBarMessage(@NotNull JsonMessage actionBar) {
-        this.sendActionBar(actionBar.asComponent());
     }
 
     @Override
@@ -1150,35 +1051,10 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
      * Gets the player display name in the tab-list.
      *
      * @return the player display name, null means that {@link #getUsername()} is displayed
-     * @deprecated Use {@link #getDisplayName()}
-     */
-    @Nullable
-    @Deprecated
-    public JsonMessage getDisplayNameJson() {
-        return JsonMessage.fromComponent(displayName);
-    }
-
-    /**
-     * Gets the player display name in the tab-list.
-     *
-     * @return the player display name, null means that {@link #getUsername()} is displayed
      */
     @Nullable
     public Component getDisplayName() {
         return displayName;
-    }
-
-    /**
-     * Changes the player display name in the tab-list.
-     * <p>
-     * Sets to null to show the player username.
-     *
-     * @param displayName the display name, null to display the username
-     * @deprecated Use {@link #setDisplayName(Component)}
-     */
-    @Deprecated
-    public void setDisplayName(@Nullable JsonMessage displayName) {
-        this.setDisplayName(displayName == null ? null : displayName.asComponent());
     }
 
     /**
@@ -1716,28 +1592,6 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         respawnPacket.gameMode = gameMode;
         respawnPacket.isFlat = levelFlat;
         playerConnection.sendPacket(respawnPacket);
-    }
-
-    /**
-     * Kicks the player with a reason.
-     *
-     * @param text the kick reason
-     * @deprecated Use {@link #kick(Component)}
-     */
-    @Deprecated
-    public void kick(@NotNull JsonMessage text) {
-        this.kick(text.asComponent());
-    }
-
-    /**
-     * Kicks the player with a reason.
-     *
-     * @param message the kick reason
-     * @deprecated Use {@link #kick(Component)}
-     */
-    @Deprecated
-    public void kick(@NotNull String message) {
-        this.kick(Component.text(message));
     }
 
     /**
@@ -2586,16 +2440,6 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
         RIGHT
     }
 
-    /**
-     * @deprecated See {@link ChatMessageType}
-     */
-    @Deprecated
-    public enum ChatMode {
-        ENABLED,
-        COMMANDS_ONLY,
-        HIDDEN
-    }
-
     public class PlayerSettings {
 
         private String locale;
@@ -2625,17 +2469,6 @@ public class Player extends LivingEntity implements CommandSender, Localizable, 
          */
         public byte getViewDistance() {
             return viewDistance;
-        }
-
-        /**
-         * Gets the player chat mode.
-         *
-         * @return the player chat mode
-         * @deprecated Use {@link #getChatMessageType()}
-         */
-        @Deprecated
-        public ChatMode getChatMode() {
-            return ChatMode.values()[chatMessageType.ordinal()];
         }
 
         /**
