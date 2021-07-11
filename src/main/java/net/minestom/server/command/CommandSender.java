@@ -1,6 +1,9 @@
 package net.minestom.server.command;
 
+import java.util.UUID;
+
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.identity.Identified;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.chat.JsonMessage;
 import net.minestom.server.entity.Player;
@@ -13,7 +16,7 @@ import org.jetbrains.annotations.NotNull;
  * <p>
  * Main implementations are {@link Player} and {@link ConsoleSender}.
  */
-public interface CommandSender extends PermissionHandler, Audience, TagHandler {
+public interface CommandSender extends PermissionHandler, Audience, TagHandler, Identified {
 
     /**
      * Sends a raw string message.

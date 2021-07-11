@@ -96,7 +96,7 @@ import java.util.function.UnaryOperator;
  * <p>
  * You can easily create your own implementation of this and use it with {@link ConnectionManager#setPlayerProvider(PlayerProvider)}.
  */
-public class Player extends LivingEntity implements CommandSender, Localizable, HoverEventSource<ShowEntity>, Identified, NamedAndIdentified {
+public class Player extends LivingEntity implements CommandSender, Localizable, NamedAndIdentified {
 
     private long lastKeepAlive;
     private boolean answerKeepAlive;
